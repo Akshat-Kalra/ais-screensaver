@@ -1,6 +1,7 @@
 import { buildStyle, addPatterns, PAPER, INK, GREY } from './map-style.js';
 import { shipArt, MARKER } from './ships.js';
 import { portName } from './ports.js';
+import { setupExplore } from './explore.js';
 
 // ---------------------------------------------------------------- config
 
@@ -13,6 +14,9 @@ const CFG = {
   retry: 20_000,
   flash: !PREVIEW && params.get('flash') !== '0',
   api: params.get('api') || '',
+  // In a normal browser tab (not the screensaver) the map and keyboard are interactive.
+  explore: !flag('saver') && !PREVIEW,
+  region: params.get('region') || '',
 };
 
 const OLD_TRACK_S = 6 * 3600;
@@ -23,14 +27,29 @@ const NM = 1852;
 const $ = (id) => document.getElementById(id);
 const els = {
   app: $('app'), card: $('card'), region: $('region'), utc: $('clock-utc'), local: $('clock-local'),
-  count: $('count'), signal: $('signal'), graticule: $('graticule'), scale: $('scale'),
+  count: $('count'), signal: $('signal'), mode: $('mode'), graticule: $('graticule'), scale: $('scale'),
   flash: $('flash'), ghost: $('ghost'), sleep: $('sleep'), sleepArt: $('sleep-art'),
   sleepTitle: $('sleep-title'), sleepText: $('sleep-text'),
 };
 
-const state = { vessel: null, recent: [], cardNo: 0, health: null };
+const state = {
+  vessel: null, recent: [], cardNo: 0, health: null,
+  // explore mode
+  queued: null, paused: false, history: [], histIdx: -1,
+};
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// An interruptible sleep: explore-mode commands call wake() to skip the rest of a dwell.
+let wake = () => {};
+const nap = (ms) => new Promise((r) => {
+  const t = setTimeout(r, ms);
+  wake = () => { clearTimeout(t); r(); };
+});
+function command(cmd) {
+  state.queued = cmd;
+  wake();
+}
 
 // The screensaver has no console, so errors and milestones are sent to the collector's log.
 function report(kind, detail = {}) {
@@ -115,6 +134,9 @@ function renderStatus() {
   const tz = state.vessel?.region?.tz;
   const local = tz && timeIn(tz);
   els.local.textContent = local ? `Local ${local}` : '';
+  els.mode.textContent = !CFG.explore ? ''
+    : state.paused ? 'Paused · space to resume'
+      : '← → ships · space pause · / search';
   const h = state.health;
   els.count.textContent = h ? `${h.vessels.toLocaleString('en-US')} ships` : '';
   const rate = h?.connected ? h.msgs_per_min : 0;
@@ -291,7 +313,10 @@ function initMap() {
     map = new maplibregl.Map({
       container: 'map',
       style: buildStyle(),
-      interactive: false,
+      interactive: CFG.explore,
+      dragRotate: false,
+      pitchWithRotate: false,
+      touchPitch: false,
       attributionControl: false,
       fadeDuration: 0,
       preserveDrawingBuffer: true,
@@ -383,6 +408,17 @@ function initMap() {
           'icon-allow-overlap': true, 'icon-ignore-placement': true,
         },
       });
+      if (CFG.explore) {
+        for (const layer of ['others-moving', 'others-still']) {
+          map.on('click', layer, (e) => {
+            const mmsi = e.features?.[0]?.properties?.mmsi;
+            if (mmsi) command({ mmsi });
+          });
+          map.on('mouseenter', layer, () => { map.getCanvas().style.cursor = 'pointer'; });
+          map.on('mouseleave', layer, () => { map.getCanvas().style.cursor = ''; });
+        }
+        map.on('moveend', () => { if (state.vessel) { renderGraticule(); renderScale(); } });
+      }
       mapReady = true;
       resolve();
     });
@@ -502,7 +538,7 @@ function setMapData(v, nearby) {
   if (nearby) {
     map.getSource('others').setData(fc(nearby.filter((o) => o.mmsi !== v.mmsi).map((o) => ({
       type: 'Feature',
-      properties: { rot: o.heading ?? o.cog ?? 0, moving: (o.sog ?? 0) >= 0.5 && (o.cog != null || o.heading != null) },
+      properties: { mmsi: o.mmsi, rot: o.heading ?? o.cog ?? 0, moving: (o.sog ?? 0) >= 0.5 && (o.cog != null || o.heading != null) },
       geometry: { type: 'Point', coordinates: [o.lon, o.lat] },
     }))));
   }
@@ -694,17 +730,20 @@ function showSleep(kind) {
 
 // ---------------------------------------------------------------- main loop
 
-async function next() {
-  const exclude = state.recent.join(',');
+async function next(cmd) {
+  const region = CFG.region ? `&region=${encodeURIComponent(CFG.region)}` : '';
   let r;
   try {
-    r = await api(`/api/pick?exclude=${exclude}`);
+    r = cmd?.mmsi
+      ? await api(`/api/vessel/${cmd.mmsi}`)
+      : await api(`/api/pick?exclude=${state.recent.join(',')}${region}`);
   } catch {
     return { kind: 'offline' };
   }
+  if (cmd?.mmsi && !r.ok) return next(); // ship vanished: fall back to a random one
   if (r.status === 404 && state.recent.length) {
     state.recent = []; // small fleet: allow repeats rather than going to sleep
-    r = await api('/api/pick').catch(() => null);
+    r = await api(`/api/pick?${region.slice(1)}`).catch(() => null);
   }
   if (!r?.ok) return { kind: r?.status === 404 ? 'empty' : 'offline' };
   const v = r.body;
@@ -716,25 +755,54 @@ async function next() {
   return { kind: 'vessel', vessel: v, nearby };
 }
 
+function remember(mmsi, fromHistory) {
+  state.recent = [mmsi, ...state.recent.filter((m) => m !== mmsi)].slice(0, RECENT_MAX);
+  if (fromHistory) return;
+  state.history = [...state.history.slice(0, state.histIdx + 1), mmsi].slice(-50);
+  state.histIdx = state.history.length - 1;
+}
+
 async function run() {
   for (;;) {
-    const n = await next();
+    const cmd = state.queued;
+    state.queued = null;
+    const n = await next(cmd);
     if (n.kind !== 'vessel') {
       await refreshHealth();
       showSleep(n.kind);
-      await sleep(CFG.retry);
+      await nap(CFG.retry);
       continue;
     }
-    state.recent = [n.vessel.mmsi, ...state.recent.filter((m) => m !== n.vessel.mmsi)].slice(0, RECENT_MAX);
+    remember(n.vessel.mmsi, cmd?.fromHistory);
     await fullRefresh(n.vessel, n.nearby);
 
+    // Dwell, with quiet partial refreshes. Paused ships keep updating but never rotate out.
     const end = Date.now() + CFG.dwell;
-    while (Date.now() < end) {
-      await sleep(Math.min(CFG.partial, end - Date.now()));
-      if (Date.now() >= end || PREVIEW) continue;
-      if (!(await partialRefresh())) break;
+    while (!state.queued && (state.paused || Date.now() < end)) {
+      await nap(state.paused ? CFG.partial : Math.min(CFG.partial, end - Date.now()));
+      if (state.queued || PREVIEW) continue;
+      if (!state.paused && Date.now() >= end) break;
+      if (!(await partialRefresh()) && !state.paused) break;
     }
   }
+}
+
+function enableExplore() {
+  setupExplore({
+    api,
+    onNext: () => command({ next: true }),
+    onPrev: () => {
+      if (state.histIdx <= 0) return;
+      state.histIdx -= 1;
+      command({ mmsi: state.history[state.histIdx], fromHistory: true });
+    },
+    onTogglePause: () => {
+      state.paused = !state.paused;
+      renderStatus();
+      if (!state.paused) wake();
+    },
+    onSelect: (mmsi) => command({ mmsi }),
+  });
 }
 
 async function probe() {
@@ -752,6 +820,7 @@ async function probe() {
 async function boot() {
   report('boot');
   probe();
+  if (CFG.explore) enableExplore();
   startClock();
   const loaded = await Promise.race([initMap().then(() => true), sleep(15_000).then(() => false)]);
   report(loaded ? 'map-loaded' : 'map-timeout', loaded ? {} : {

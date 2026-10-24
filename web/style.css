@@ -324,3 +324,59 @@ body::after {
 }
 .sleep p { margin: 0; font-size: 0.8rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--grey); }
 .sleep p code { font-family: var(--mono); text-transform: none; letter-spacing: 0.02em; color: var(--ink); }
+
+/* ---- explore mode (browser only) ---- */
+
+body.explore { cursor: auto; user-select: text; }
+.status .mode { color: var(--grey); letter-spacing: 0.12em; margin-left: 0.6rem; }
+
+.search {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding-top: 14vh;
+  background: rgba(233, 231, 224, 0.55);
+}
+.search[hidden] { display: none; }
+.search-panel {
+  width: min(36rem, 90vw);
+  background: var(--paper);
+  border: 0.14rem solid var(--ink);
+  border-radius: 0.9rem;
+  padding: 1.3rem 1.5rem 1rem;
+  box-shadow: 0.45rem 0.45rem 0 var(--ink);
+}
+.search-label { font-size: 0.66rem; letter-spacing: 0.22em; text-transform: uppercase; color: var(--grey); }
+.search-input {
+  display: block;
+  width: 100%;
+  margin: 0.5rem 0 0.4rem;
+  padding: 0.3rem 0 0.45rem;
+  font: 500 1.7rem var(--serif);
+  color: var(--ink);
+  background: none;
+  border: 0;
+  border-bottom: var(--hair) solid var(--ink);
+  outline: none;
+}
+.search-input::placeholder { color: var(--light); }
+.search-results { list-style: none; margin: 0; padding: 0; }
+.search-results li {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.5rem 0.6rem;
+  margin: 0 -0.6rem;
+  border-radius: 0.35rem;
+  cursor: pointer;
+  font-size: 0.82rem;
+}
+.search-results li.active { background: var(--ink); color: var(--paper); }
+.search-results li.active .r-meta { color: var(--light); }
+.search-results li.empty { color: var(--grey); cursor: default; }
+.r-name { font-weight: 500; letter-spacing: 0.04em; }
+.r-meta { color: var(--grey); font-size: 0.72rem; letter-spacing: 0.06em; white-space: nowrap; }
+.search-hint { margin: 0.8rem 0 0; font-size: 0.62rem; letter-spacing: 0.12em; color: var(--grey); text-transform: uppercase; }

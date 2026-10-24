@@ -132,6 +132,7 @@ class Api:
 
     async def pick(self, request: web.Request) -> web.Response:
         exclude_list = [int(x) for x in request.query.get("exclude", "").split(",") if x.strip().isdigit()]
+        only_region = request.query.get("region") or None
         exclude = set(exclude_list)
         recent_cats = {
             tables.ship_type_info(self.store.vessels[m].ship_type)[1]
@@ -143,6 +144,8 @@ class Api:
         tiers = [(defaultdict(list), defaultdict(list)) for _ in TRACK_TIERS]  # (moving, still)
         for v in self.store.vessels.values():
             if not v.name or not v.region or v.ts is None or now - v.ts > FRESH_S or v.mmsi in exclude:
+                continue
+            if only_region and v.region != only_region:
                 continue
             st = stats.get(v.mmsi)
             if not st:
@@ -185,6 +188,40 @@ class Api:
         if v is None or v.lat is None:
             return web.json_response({"error": "not_found"}, status=404)
         return web.json_response(await self.vessel_json(v))
+
+    async def search(self, request: web.Request) -> web.Response:
+        """Find vessels by name substring or MMSI prefix; live ones first."""
+        q = request.query.get("q", "").strip().upper()
+        if len(q) < 2:
+            return web.json_response([])
+        now = time.time()
+        hits = []
+        for v in self.store.vessels.values():
+            if v.lat is None or v.ts is None:
+                continue
+            name = (v.name or "").upper()
+            if q.isdigit() and str(v.mmsi).startswith(q):
+                rank = 0
+            elif name.startswith(q):
+                rank = 1
+            elif q in name:
+                rank = 2
+            else:
+                continue
+            live = now - v.ts < FRESH_S
+            hits.append((not live, rank, name, v))
+        hits.sort(key=lambda h: h[:3])
+        return web.json_response([
+            {
+                "mmsi": v.mmsi, "name": v.name, "category": tables.ship_type_info(v.ship_type)[1],
+                "region": regions.BY_ID[v.region].name if v.region in regions.BY_ID else None,
+                "sog": v.sog, "live": not stale,
+            }
+            for stale, _, _, v in hits[:8]
+        ])
+
+    async def regions(self, request: web.Request) -> web.Response:
+        return web.json_response([r.as_json() for r in regions.REGIONS])
 
     async def nearby(self, request: web.Request) -> web.Response:
         try:
@@ -244,6 +281,8 @@ class Api:
         app.router.add_get("/api/pick", self.pick)
         app.router.add_get("/api/vessel/{mmsi}", self.vessel)
         app.router.add_get("/api/nearby", self.nearby)
+        app.router.add_get("/api/search", self.search)
+        app.router.add_get("/api/regions", self.regions)
         app.router.add_post("/api/log", self.client_log)
         app.router.add_get("/{tail:.*}", self.static)
         return app

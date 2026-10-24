@@ -32,7 +32,9 @@ const PORTS = {
 };
 
 function titleCase(s) {
-  return s.toLowerCase().replace(/(^|[\s\-/(])(\p{L})/gu, (_, p, c) => p + c.toUpperCase());
+  // Keep 1-2 letter codes like "BC" or "NY" in caps.
+  return s.split(' ').map((w) => (w.length <= 2 ? w.toUpperCase()
+    : w.toLowerCase().replace(/(^|[\-/(])(\p{L})/gu, (_, p, c) => p + c.toUpperCase()))).join(' ');
 }
 
 // Returns { name, code } for display; code is the raw LOCODE when one was recognised.
@@ -44,5 +46,13 @@ export function portName(dest) {
     return { name: PORTS[compact], code: `${compact.slice(0, 2)} ${compact.slice(2)}` };
   }
   if (/^FOR ORDERS?$/i.test(last)) return { name: 'For orders', code: null };
+  // "JP CHB DEZU A": a LOCODE followed by a berth or terminal name.
+  const m = last.toUpperCase().match(/^([A-Z]{2})\s?([A-Z]{3})\b\s*(.*)$/);
+  if (m) {
+    const port = PORTS[m[1] + m[2]];
+    const rest = m[3] ? titleCase(m[3]) : '';
+    if (port) return { name: rest ? `${port} · ${rest}` : port, code: `${m[1]} ${m[2]}` };
+    return { name: last.toUpperCase(), code: null }; // unknown code: keep it as typed
+  }
   return { name: titleCase(last), code: null };
 }

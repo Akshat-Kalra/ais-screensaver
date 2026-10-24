@@ -5,6 +5,10 @@ A macOS screensaver that looks like an e-ink reader tracking ships. Every 45 sec
 dithered chart with the ship's last 12 hours of track, and the right side shows a Top Trumps-style
 card with its stats.
 
+Inspired by [Paul Lagier](https://www.youtube.com/@PaulLagierEN)'s video
+[*I Built the Perfect Device for My Girlfriend's Weird Hobby*](https://www.youtube.com/watch?v=lsG5w9Y8AuI),
+an AIS ship tracker on an e-ink display.
+
 ![AIS E-Ink screensaver](docs/screenshot.jpg)
 
 ```
@@ -29,6 +33,22 @@ aisstream.io ──► collector (Python, LaunchAgent) ──► http://127.0.0.
 Ship trails get richer as the collector runs. After an hour or two most ships will have a
 proper track. Until then the screensaver shows a "Listening for ships" page.
 
+## Explore mode
+
+Open <http://127.0.0.1:47823/> in a browser to use the same UI interactively (the screensaver itself
+dismisses on any input).
+
+| key | action |
+|---|---|
+| `→` / `n` | next ship |
+| `←` / `p` | previous ship |
+| `space` | pause on this ship (it keeps updating) |
+| `/` or `⌘K` | search ships by name or MMSI |
+
+Click any of the small triangles or circles to jump to that ship, and drag or scroll to move the
+map. Add `?region=salish` (or `dover`, `tokyo`, `rotterdam`, …; see `collector/aissaver/regions.py`)
+to stay in one waterway.
+
 ## Development
 
 ```sh
@@ -44,6 +64,8 @@ Open <http://127.0.0.1:47823/> in a browser. URL options:
 | `dwell=N` | seconds per ship (default 45) |
 | `flash=0` | no black flash on refresh (white only) |
 | `preview=1` | static mode used for the System Settings thumbnail |
+| `region=ID` | only show ships in one region |
+| `saver=1` | screensaver mode: no controls (set by the `.saver` bundle) |
 
 `web/dev/gallery.html` shows every pixel-art ship.
 
