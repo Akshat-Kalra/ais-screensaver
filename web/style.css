@@ -1,0 +1,326 @@
+:root {
+  --paper: #e9e7e0;
+  --ink: #151514;
+  --grey: #8f8d86;
+  --light: #c4c2ba;
+  --serif: 'Literata', 'Iowan Old Style', Georgia, serif;
+  --mono: 'IBM Plex Mono', 'SF Mono', Menlo, monospace;
+  --hair: max(1px, 0.07rem);
+  color-scheme: light;
+}
+
+* { box-sizing: border-box; }
+
+html {
+  /* Everything scales with the screen: ~17px on a 16" MacBook Pro. */
+  font-size: min(1vw, 1.6vh);
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--mono);
+  -webkit-font-smoothing: antialiased;
+  font-variant-numeric: tabular-nums;
+  cursor: none;
+  user-select: none;
+}
+
+/* Matte e-paper: faint monochrome grain + a soft vignette, above everything. */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 50;
+  background:
+    radial-gradient(ellipse at 50% 45%, transparent 60%, rgba(40, 36, 28, 0.07) 100%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.1 0 0 0 0 0.09 0 0 0 0 0.08 0 0 0 0.55 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  opacity: 0.22;
+  mix-blend-mode: multiply;
+}
+
+#app {
+  position: relative;
+  height: 100%;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  padding: 1.6rem 2.4rem 2.2rem;
+  gap: 1.5rem;
+}
+
+#app.inverted { filter: invert(1); }
+
+/* ---- status bar (e-reader chrome) ---- */
+
+.status {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.78rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  padding-bottom: 0.7rem;
+  border-bottom: var(--hair) solid var(--ink);
+}
+.status-left, .status-right { display: flex; align-items: center; gap: 1.1rem; }
+.status .mark { font-weight: 600; }
+.status .sep { color: var(--grey); }
+.status .dim { color: var(--grey); }
+
+.signal { display: inline-flex; align-items: flex-end; gap: 0.16rem; height: 0.8rem; }
+.signal i { display: block; width: 0.22rem; border: var(--hair) solid var(--ink); }
+.signal i.on { background: var(--ink); }
+
+/* ---- layout ---- */
+
+.main {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 1fr 35rem;
+  gap: 2.4rem;
+}
+
+/* ---- chart ---- */
+
+.chart { min-width: 0; min-height: 0; display: flex; }
+
+.frame {
+  position: relative;
+  flex: 1;
+  border: 0.14rem solid var(--ink);
+  outline: var(--hair) solid var(--ink);
+  outline-offset: 0.3rem;
+  margin: 0.3rem;
+}
+
+#map { position: absolute; inset: 0; background: var(--paper); }
+.maplibregl-canvas { outline: none; }
+
+.graticule { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.graticule .tick { position: absolute; background: var(--ink); }
+.graticule .tick.v { top: 0; width: var(--hair); height: 0.55rem; }
+.graticule .tick.v.b { top: auto; bottom: 0; }
+.graticule .tick.h { left: 0; height: var(--hair); width: 0.55rem; }
+.graticule .tick.h.r { left: auto; right: 0; }
+.graticule .lbl {
+  position: absolute;
+  font-size: 0.6rem;
+  letter-spacing: 0.06em;
+  color: var(--ink);
+  background: var(--paper);
+  padding: 0 0.2rem;
+  white-space: nowrap;
+}
+.graticule .lbl.v { top: 0.65rem; transform: translateX(-50%); }
+.graticule .lbl.h { left: 0.7rem; transform: translateY(-50%); }
+
+.chart-overlay { position: absolute; inset: 0; pointer-events: none; }
+
+.north {
+  position: absolute;
+  top: 1.6rem;
+  right: 1.4rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  font-size: 0.66rem;
+  font-weight: 600;
+  background: var(--paper);
+  padding: 0.35rem 0.4rem 0.25rem;
+}
+.north svg { width: 0.62rem; fill: var(--ink); }
+
+.scale {
+  position: absolute;
+  left: 1.4rem;
+  bottom: 1.3rem;
+  background: var(--paper);
+  padding: 0.4rem 0.5rem 0.3rem;
+  font-size: 0.6rem;
+  letter-spacing: 0.06em;
+}
+.scale .bar { display: flex; height: 0.38rem; border: var(--hair) solid var(--ink); }
+.scale .bar i { flex: 1; }
+.scale .bar i:nth-child(odd) { background: var(--ink); }
+.scale .labels { display: flex; justify-content: space-between; margin-top: 0.2rem; }
+
+.credit {
+  position: absolute;
+  right: 1.4rem;
+  bottom: 1.3rem;
+  font-size: 0.55rem;
+  letter-spacing: 0.08em;
+  color: var(--grey);
+  background: var(--paper);
+  padding: 0.15rem 0.35rem;
+}
+
+/* ---- the card ---- */
+
+.card-wrap { min-height: 0; display: flex; align-items: stretch; }
+
+.card {
+  position: relative;
+  flex: 1;
+  display: flex;
+  padding: 0.55rem;
+  border: 0.14rem solid var(--ink);
+  border-radius: 1.1rem;
+  background: var(--paper);
+}
+
+.card-inner {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  border: var(--hair) solid var(--ink);
+  border-radius: 0.65rem;
+  padding: 1.3rem 1.6rem 1.1rem;
+  min-height: 0;
+}
+
+.card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 0.72rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+.card-head .no { font-family: var(--serif); font-style: italic; letter-spacing: 0.02em; font-size: 1.05rem; text-transform: none; }
+
+.art {
+  margin: 0.9rem 0 0;
+  flex: 1 1 auto;
+  min-height: 7rem;
+  max-height: 20rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-top: var(--hair) solid var(--ink);
+  border-bottom: var(--hair) solid var(--ink);
+  padding: 0.8rem 0;
+}
+.art svg { width: 100%; height: 100%; fill: var(--ink); }
+
+.name {
+  font-family: var(--serif);
+  font-weight: 600;
+  font-size: var(--name-size, 2.6rem);
+  line-height: 1.05;
+  letter-spacing: -0.005em;
+  margin: 1.1rem 0 0.45rem;
+  text-wrap: balance;
+}
+
+.ident {
+  margin: 0;
+  font-size: 0.74rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 0.8rem;
+}
+.ident .dim { color: var(--grey); }
+
+.stats {
+  list-style: none;
+  margin: 1.2rem 0 0;
+  padding: 0.95rem 0 0;
+  border-top: var(--hair) solid var(--ink);
+  display: grid;
+  gap: 0.62rem;
+}
+.stat {
+  display: grid;
+  grid-template-columns: 6.6rem 1fr 6.2rem;
+  align-items: center;
+  gap: 1rem;
+}
+.stat .label { font-size: 0.68rem; letter-spacing: 0.18em; text-transform: uppercase; }
+.stat .bar { display: grid; grid-template-columns: repeat(10, 1fr); gap: 0.2rem; height: 0.78rem; }
+.stat .bar i { border: var(--hair) solid var(--ink); }
+.stat .bar i.on { background: var(--ink); }
+.stat .val { text-align: right; font-size: 1.02rem; font-weight: 500; }
+.stat .val small { font-size: 0.66rem; font-weight: 400; margin-left: 0.2rem; letter-spacing: 0.06em; }
+.stat.unknown .val { color: var(--grey); }
+
+.voyage {
+  margin-top: 1.15rem;
+  padding-top: 0.95rem;
+  border-top: var(--hair) solid var(--ink);
+  display: grid;
+  gap: 0.5rem;
+}
+.voyage .k {
+  font-size: 0.64rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--grey);
+}
+.dest { display: grid; grid-template-columns: auto 1fr auto; align-items: baseline; gap: 0.9rem; }
+.dest .v { font-family: var(--serif); font-size: 1.55rem; font-weight: 500; line-height: 1.1; }
+.dest .v::before { content: '→ '; font-family: var(--mono); font-size: 1.1rem; }
+.dest .code { font-size: 0.68rem; letter-spacing: 0.12em; }
+.vrow { display: grid; grid-template-columns: 6.6rem 1fr auto; align-items: baseline; gap: 1rem; font-size: 0.8rem; }
+.vrow .aux { color: var(--grey); font-size: 0.72rem; }
+
+.card-foot {
+  margin-top: auto;
+  padding-top: 0.9rem;
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.66rem;
+  letter-spacing: 0.08em;
+  color: var(--ink);
+}
+.card-foot .dim { color: var(--grey); }
+
+/* Partial refresh: changed text blinks inverted for a moment, like an e-ink region update. */
+.blink { animation: blink 160ms steps(1) 1; }
+@keyframes blink { 0% { background: var(--ink); color: var(--paper); } 100% { background: none; } }
+
+/* ---- full-refresh flash + ghosting ---- */
+
+.flash { position: fixed; inset: 0; z-index: 100; display: none; }
+.flash.ink { display: block; background: var(--ink); }
+.flash.paper { display: block; background: var(--paper); }
+
+.ghost { position: fixed; inset: 0; z-index: 40; pointer-events: none; opacity: 0; }
+.ghost > * { position: absolute; margin: 0; }
+.ghost img { filter: grayscale(1) contrast(1.4); }
+
+/* ---- sleep screen ---- */
+
+.sleep {
+  position: absolute;
+  inset: 5rem 2.4rem 2.2rem;
+  z-index: 30;
+  background: var(--paper);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+.sleep[hidden] { display: none; }
+#app.sleeping .main { visibility: hidden; }
+.sleep-art { width: 30rem; height: 12rem; }
+.sleep-art svg { width: 100%; height: 100%; fill: var(--ink); }
+.sleep h2 {
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 400;
+  font-size: 2.3rem;
+  margin: 2.4rem 0 0.8rem;
+}
+.sleep p { margin: 0; font-size: 0.8rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--grey); }
+.sleep p code { font-family: var(--mono); text-transform: none; letter-spacing: 0.02em; color: var(--ink); }

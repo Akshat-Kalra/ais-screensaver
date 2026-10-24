@@ -1,0 +1,16 @@
+<!doctype html>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../style.css">
+<style>
+  body { overflow: auto; padding: 2rem; display: grid; grid-template-columns: repeat(3, 1fr); gap: 2rem; font-size: 14px; }
+  figure { margin: 0; border: 1px solid var(--ink); padding: 1rem; height: 220px; display: flex; flex-direction: column; }
+  figure svg { flex: 1; fill: var(--ink); width: 100%; }
+  figcaption { font-family: var(--mono); letter-spacing: .15em; text-transform: uppercase; font-size: 12px; }
+</style>
+<body>
+<script type="module">
+  import { shipArt } from '../ships.js';
+  for (const c of ['cargo','tanker','passenger','fishing','tug','sailing','pleasure','highspeed','military','special','other']) {
+    document.body.insertAdjacentHTML('beforeend', `<figure>${shipArt(c, c.length * 7919)}<figcaption>${c}</figcaption></figure>`);
+  }
+</script>

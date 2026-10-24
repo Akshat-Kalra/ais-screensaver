@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AIS E-Ink</title>
+  <link rel="icon" href="data:,">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Literata:ital,opsz,wght@0,7..72,400..700;1,7..72,400..600&display=block">
+  <link rel="stylesheet" href="vendor/maplibre-gl.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+    <header class="status">
+      <div class="status-left">
+        <span class="mark">AIS</span>
+        <span class="sep">·</span>
+        <span id="region">Listening</span>
+      </div>
+      <div class="status-right">
+        <span id="clock-utc">--:-- UTC</span>
+        <span id="clock-local" class="dim"></span>
+        <span id="count" class="dim"></span>
+        <span id="signal" class="signal" aria-label="feed signal"></span>
+      </div>
+    </header>
+
+    <main class="main">
+      <section class="chart">
+        <div class="frame">
+          <div id="map"></div>
+          <div id="graticule" class="graticule"></div>
+          <div class="chart-overlay">
+            <div class="north" aria-hidden="true">
+              <svg viewBox="0 0 10 16" shape-rendering="crispEdges"><path d="M5 0 L10 12 L5 9 L0 12 Z"/></svg>
+              <span>N</span>
+            </div>
+            <div id="scale" class="scale"></div>
+            <div class="credit">© OpenStreetMap · OpenFreeMap · aisstream.io</div>
+          </div>
+        </div>
+      </section>
+
+      <aside class="card-wrap">
+        <article id="card" class="card"></article>
+      </aside>
+    </main>
+
+    <div id="sleep" class="sleep" hidden>
+      <div class="sleep-art" id="sleep-art"></div>
+      <h2 id="sleep-title">Listening for ships</h2>
+      <p id="sleep-text"></p>
+    </div>
+  </div>
+
+  <div id="ghost" class="ghost" aria-hidden="true"></div>
+  <div id="flash" class="flash" aria-hidden="true"></div>
+
+  <script src="vendor/maplibre-gl.js"></script>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
