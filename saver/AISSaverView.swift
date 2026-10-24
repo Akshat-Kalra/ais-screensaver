@@ -111,6 +111,9 @@ final class AISSaverView: ScreenSaverView, WKNavigationDelegate {
             return URL(string: override)
         }
         if isPreview { base += "&preview=1" }
+        // Match the menu bar clock: the page can't see the "24-hour time" setting itself.
+        let hourFormat = DateFormatter.dateFormat(fromTemplate: "j", options: 0, locale: .current) ?? ""
+        base += hourFormat.contains("H") || hourFormat.contains("k") ? "&hours=24" : "&hours=12"
         return URL(string: base)
     }
 

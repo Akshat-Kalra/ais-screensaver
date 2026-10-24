@@ -33,6 +33,21 @@ aisstream.io ──► collector (Python, LaunchAgent) ──► http://127.0.0.
 Ship trails get richer as the collector runs. After an hour or two most ships will have a
 proper track. Until then the screensaver shows a "Listening for ships" page.
 
+## Live wallpaper
+
+```sh
+scripts/install-wallpaper.sh     # remove with scripts/uninstall-wallpaper.sh
+```
+
+A small background app (no Dock icon) puts the same view behind your desktop icons on every
+display, changing ships every 3 minutes without the black flash. macOS has no public API for
+third-party wallpapers in System Settings, so this is a window at desktop level. Extra URL options
+can be set with `defaults write com.akshatkalra.AISWallpaper params "dwell=60&region=tokyo"`.
+
+For a still wallpaper or lock screen instead, open <http://127.0.0.1:47823/poster.html?region=hongkong>.
+It draws every track in one waterway from the last 12 hours as a chart. Screenshot it at your
+display's size, then pick the image in **System Settings → Wallpaper**.
+
 ## Explore mode
 
 Open <http://127.0.0.1:47823/> in a browser to use the same UI interactively (the screensaver itself
@@ -65,7 +80,11 @@ Open <http://127.0.0.1:47823/> in a browser. URL options:
 | `flash=0` | no black flash on refresh (white only) |
 | `preview=1` | static mode used for the System Settings thumbnail |
 | `region=ID` | only show ships in one region |
-| `saver=1` | screensaver mode: no controls (set by the `.saver` bundle) |
+| `saver=1` | screensaver mode: no controls, big clock (set by the `.saver` bundle) |
+| `clock=0` / `clock=1` | hide or show the big clock and date |
+| `hours=12` / `hours=24` | clock format (the `.saver` passes your Mac's setting) |
+| `wallpaper=1` | wallpaper mode: 3 min per ship, no black flash |
+| `inset=t,r,b,l` | extra padding in px (the wallpaper app leaves room for the menu bar and Dock) |
 
 `web/dev/gallery.html` shows every pixel-art ship.
 
@@ -74,7 +93,8 @@ Open <http://127.0.0.1:47823/> in a browser. URL options:
 - `collector/`: aisstream client, downsampling store, HTTP API (`aissaver/api.py`), and mock feed
 - `web/`: the e-ink UI (MapLibre with a custom 1-bit style on OpenFreeMap tiles)
 - `saver/`: the Swift `ScreenSaverView` bundle, built without Xcode
-- `scripts/`: LaunchAgent install/uninstall and API key helper
+- `wallpaper/`: the live wallpaper app, also plain `swiftc`
+- `scripts/`: LaunchAgent install/uninstall (collector and wallpaper) and API key helper
 
 Data lives in `~/Library/Application Support/ais-screensaver/` and logs in
 `~/Library/Logs/ais-screensaver/`.
@@ -83,5 +103,6 @@ Data lives in `~/Library/Application Support/ais-screensaver/` and logs in
 
 ```sh
 scripts/uninstall-agent.sh
+scripts/uninstall-wallpaper.sh
 rm -rf ~/Library/Screen\ Savers/AISSaver.saver ~/Library/Application\ Support/ais-screensaver
 ```

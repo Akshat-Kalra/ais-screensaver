@@ -8,16 +8,28 @@ import { setupExplore } from './explore.js';
 const params = new URLSearchParams(location.search);
 const flag = (k) => params.has(k) && params.get(k) !== '0';
 const PREVIEW = flag('preview');
+// Desktop wallpaper (wallpaper/ app): always in view, so ships change slowly and without the ink flash.
+const WALLPAPER = flag('wallpaper');
 const CFG = {
-  dwell: Math.max(10, Number(params.get('dwell')) || (PREVIEW ? 90 : 45)) * 1000,
+  dwell: Math.max(10, Number(params.get('dwell')) || (PREVIEW ? 90 : WALLPAPER ? 180 : 45)) * 1000,
   partial: 15_000,
   retry: 20_000,
-  flash: !PREVIEW && params.get('flash') !== '0',
+  flash: !PREVIEW && (params.has('flash') ? flag('flash') : !WALLPAPER),
   api: params.get('api') || '',
   // In a normal browser tab (not the screensaver) the map and keyboard are interactive.
   explore: !flag('saver') && !PREVIEW,
   region: params.get('region') || '',
+  // Big clock and date, like a lock screen: on in the screensaver, opt-in elsewhere with clock=1.
+  clock: params.has('clock') ? flag('clock') : flag('saver') && !WALLPAPER,
+  // 12 or 24; the .saver passes the Mac's setting, otherwise the locale decides.
+  hours: Number(params.get('hours')) || null,
 };
+
+// inset=top,right,bottom,left in px: room for the menu bar and Dock when used as a wallpaper.
+const inset = (params.get('inset') || '').split(',').map(Number);
+['top', 'right', 'bottom', 'left'].forEach((side, i) => {
+  if (inset[i] > 0) document.documentElement.style.setProperty(`--inset-${side}`, `${inset[i]}px`);
+});
 
 const OLD_TRACK_S = 6 * 3600;
 const GAP_S = 30 * 60;
@@ -30,6 +42,7 @@ const els = {
   count: $('count'), signal: $('signal'), mode: $('mode'), graticule: $('graticule'), scale: $('scale'),
   flash: $('flash'), ghost: $('ghost'), sleep: $('sleep'), sleepArt: $('sleep-art'),
   sleepTitle: $('sleep-title'), sleepText: $('sleep-text'),
+  battery: $('battery'), clocks: [$('clock'), $('sleep-clock')],
 };
 
 const state = {
@@ -143,6 +156,40 @@ function renderStatus() {
   const bars = !h ? 0 : !h.connected ? 0 : rate > 1500 ? 4 : rate > 500 ? 3 : rate > 60 ? 2 : 1;
   els.signal.innerHTML = [0.35, 0.55, 0.78, 1]
     .map((f, i) => `<i class="${i < bars ? 'on' : ''}" style="height:${f * 100}%"></i>`).join('');
+  renderBattery(h?.battery);
+  if (CFG.clock) renderClock(now);
+}
+
+const timeFmt = new Intl.DateTimeFormat(undefined, {
+  hour: 'numeric', minute: '2-digit',
+  ...(CFG.hours && { hourCycle: CFG.hours === 24 ? 'h23' : 'h12' }),
+});
+const dateFmt = new Intl.DateTimeFormat(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
+
+function renderClock(now) {
+  const parts = timeFmt.formatToParts(now);
+  const get = (type) => parts.find((p) => p.type === type)?.value || '';
+  const hour = get('hour');
+  const ampm = get('dayPeriod');
+  const html = `
+    <div class="clock-time">${hour}<span class="colon">:</span>${get('minute')}${ampm ? `<span class="ampm">${ampm}</span>` : ''}</div>
+    <div class="clock-date">${dateFmt.format(now)}</div>`;
+  for (const el of els.clocks) {
+    el.hidden = false;
+    el.innerHTML = html;
+  }
+}
+
+// E-reader battery glyph: an outlined cell filled to the charge level, with a bolt while charging.
+function renderBattery(b) {
+  els.battery.hidden = !b;
+  if (!b) return;
+  const w = Math.round((Math.max(0, Math.min(100, b.percent)) / 100) * 16);
+  const bolt = b.charging ? '<path class="bolt" d="M11 1 L6 7 H9.5 L8 11 L13 5 H9.5 Z"/>' : '';
+  els.battery.innerHTML = `${b.percent}%<svg viewBox="0 0 22 12" shape-rendering="crispEdges" aria-hidden="true">
+    <rect class="shell" x="0.5" y="0.5" width="19" height="11"/><rect x="20" y="3.5" width="2" height="5"/>
+    <rect x="2" y="2" width="${w}" height="8"/>${bolt}</svg>`;
+  els.battery.title = b.charging ? 'Charging' : b.plugged ? 'Plugged in' : 'On battery';
 }
 
 async function refreshHealth() {

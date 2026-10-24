@@ -25,6 +25,7 @@
         <span id="clock-local" class="dim"></span>
         <span id="count" class="dim"></span>
         <span id="signal" class="signal" aria-label="feed signal"></span>
+        <span id="battery" class="battery" hidden></span>
       </div>
     </header>
 
@@ -45,11 +46,13 @@
       </section>
 
       <aside class="card-wrap">
+        <div id="clock" class="clock" hidden></div>
         <article id="card" class="card"></article>
       </aside>
     </main>
 
     <div id="sleep" class="sleep" hidden>
+      <div id="sleep-clock" class="clock" hidden></div>
       <div class="sleep-art" id="sleep-art"></div>
       <h2 id="sleep-title">Listening for ships</h2>
       <p id="sleep-text"></p>

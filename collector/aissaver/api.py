@@ -14,7 +14,7 @@ import logging
 
 from aiohttp import web
 
-from . import regions, tables
+from . import regions, system, tables
 from .config import FRESH_S, RETENTION_S, WEB_DIR
 from .store import STATIONARY_SOG, Store, Vessel, haversine_nm
 
@@ -128,6 +128,7 @@ class Api:
             "positions": self.store.positions_count,
             "last_message_at": _iso(self.feed.last_message_at),
             "msgs_per_min": self.msgs_per_min(),
+            "battery": await system.battery(),
         })
 
     async def pick(self, request: web.Request) -> web.Response:
@@ -220,6 +221,35 @@ class Api:
             for stale, _, _, v in hits[:8]
         ])
 
+    async def tracks(self, request: web.Request) -> web.Response:
+        """All of a region's tracks at once, for the poster view."""
+        region = regions.BY_ID.get(request.query.get("region", ""))
+        if region is None:
+            raise web.HTTPBadRequest(text="unknown region")
+        rows = await asyncio.to_thread(self.store.tracks_in, region.id, time.time() - RETENTION_S)
+        out = []
+        for mmsi, points in rows.items():
+            v = self.store.vessels.get(mmsi)
+            # Split at reception gaps so a ship that went quiet isn't joined by a straight line.
+            segments, seg = [], []
+            for lon, lat, ts, _ in points:
+                if seg and ts - seg[-1][2] > 30 * 60:
+                    segments.append(seg)
+                    seg = []
+                seg.append((lon, lat, ts))
+            segments.append(seg)
+            out.append({
+                "mmsi": mmsi,
+                "category": tables.ship_type_info(v.ship_type if v else None)[1],
+                "segments": [[[round(lon, 5), round(lat, 5)] for lon, lat, _ in s] for s in segments if len(s) > 1],
+                "last": [round(points[-1][0], 5), round(points[-1][1], 5)],
+            })
+        return web.json_response({
+            "region": region.as_json(),
+            "bbox": [region.lon_min, region.lat_min, region.lon_max, region.lat_max],
+            "tracks": out,
+        })
+
     async def regions(self, request: web.Request) -> web.Response:
         return web.json_response([r.as_json() for r in regions.REGIONS])
 
@@ -283,6 +313,7 @@ class Api:
         app.router.add_get("/api/nearby", self.nearby)
         app.router.add_get("/api/search", self.search)
         app.router.add_get("/api/regions", self.regions)
+        app.router.add_get("/api/tracks", self.tracks)
         app.router.add_post("/api/log", self.client_log)
         app.router.add_get("/{tail:.*}", self.static)
         return app

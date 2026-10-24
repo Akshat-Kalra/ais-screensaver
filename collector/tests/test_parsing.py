@@ -149,3 +149,14 @@ def test_flags():
     assert tables.flag_for(563012345) == {"code": "SG", "name": "Singapore"}
     assert tables.flag_for(316001234)["code"] == "CA"
     assert tables.flag_for(999999999) is None
+
+
+def test_pmset_battery():
+    from aissaver.system import parse_pmset
+    on_ac = "Now drawing from 'AC Power'\n -InternalBattery-0 (id=1)\t100%; charged; 0:00 remaining present: true\n"
+    assert parse_pmset(on_ac) == {"percent": 100, "charging": False, "plugged": True}
+    draining = "Now drawing from 'Battery Power'\n -InternalBattery-0 (id=1)\t64%; discharging; 5:12 remaining present: true\n"
+    assert parse_pmset(draining) == {"percent": 64, "charging": False, "plugged": False}
+    charging = "Now drawing from 'AC Power'\n -InternalBattery-0 (id=1)\t41%; charging; 1:02 remaining present: true\n"
+    assert parse_pmset(charging)["charging"] is True
+    assert parse_pmset("Now drawing from 'AC Power'\n") is None  # desktop Mac

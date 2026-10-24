@@ -49,7 +49,9 @@ body::after {
   height: 100%;
   display: grid;
   grid-template-rows: auto 1fr;
-  padding: 1.6rem 2.4rem 2.2rem;
+  padding:
+    calc(1.6rem + var(--inset-top, 0px)) calc(2.4rem + var(--inset-right, 0px))
+    calc(2.2rem + var(--inset-bottom, 0px)) calc(2.4rem + var(--inset-left, 0px));
   gap: 1.5rem;
 }
 
@@ -75,6 +77,12 @@ body::after {
 .signal { display: inline-flex; align-items: flex-end; gap: 0.16rem; height: 0.8rem; }
 .signal i { display: block; width: 0.22rem; border: var(--hair) solid var(--ink); }
 .signal i.on { background: var(--ink); }
+
+.battery { display: inline-flex; align-items: center; gap: 0.45rem; letter-spacing: 0.08em; }
+.battery[hidden] { display: none; }
+.battery svg { width: 1.45rem; height: 0.8rem; fill: var(--ink); overflow: visible; }
+.battery .shell { fill: none; stroke: var(--ink); stroke-width: 1; }
+.battery .bolt { fill: var(--paper); stroke: var(--ink); stroke-width: 0.8; stroke-linejoin: round; }
 
 /* ---- layout ---- */
 
@@ -163,11 +171,42 @@ body::after {
 
 /* ---- the card ---- */
 
-.card-wrap { min-height: 0; display: flex; align-items: stretch; }
+.card-wrap { min-height: 0; display: flex; flex-direction: column; gap: 1.4rem; }
+
+/* ---- clock (screensaver) ---- */
+
+.clock { padding: 0 0.3rem; }
+.clock[hidden] { display: none; }
+.clock-time {
+  font-family: var(--serif);
+  font-weight: 500;
+  font-size: 7.4rem;
+  line-height: 0.92;
+  letter-spacing: -0.02em;
+  font-variant-numeric: lining-nums tabular-nums;
+}
+.clock-time .colon { position: relative; top: -0.06em; margin: 0 0.02em; }
+.clock-time .ampm {
+  font-family: var(--mono);
+  font-size: 0.9rem;
+  font-weight: 500;
+  letter-spacing: 0.2em;
+  margin-left: 0.9rem;
+  text-transform: uppercase;
+}
+.clock-date {
+  margin-top: 0.9rem;
+  padding-top: 0.75rem;
+  border-top: var(--hair) solid var(--ink);
+  font-size: 0.8rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
 
 .card {
   position: relative;
   flex: 1;
+  min-height: 0;
   display: flex;
   padding: 0.55rem;
   border: 0.14rem solid var(--ink);
@@ -313,6 +352,7 @@ body::after {
 }
 .sleep[hidden] { display: none; }
 #app.sleeping .main { visibility: hidden; }
+.sleep .clock { margin-bottom: 4rem; text-align: center; }
 .sleep-art { width: 30rem; height: 12rem; }
 .sleep-art svg { width: 100%; height: 100%; fill: var(--ink); }
 .sleep h2 {

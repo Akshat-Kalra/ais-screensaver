@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AIS E-Ink · Traffic</title>
+  <link rel="icon" href="data:,">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Literata:ital,opsz,wght@0,7..72,400..700;1,7..72,400..600&display=block">
+  <link rel="stylesheet" href="vendor/maplibre-gl.css">
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="poster.css">
+</head>
+<body class="poster">
+  <div class="poster-frame">
+    <div id="map"></div>
+    <div class="north" aria-hidden="true">
+      <svg viewBox="0 0 10 16" shape-rendering="crispEdges"><path d="M5 0 L10 12 L5 9 L0 12 Z"/></svg>
+      <span>N</span>
+    </div>
+    <div id="cartouche" class="cartouche" hidden></div>
+    <div class="credit">© OpenStreetMap · OpenFreeMap · aisstream.io</div>
+  </div>
+  <script src="vendor/maplibre-gl.js"></script>
+  <script type="module" src="poster.js"></script>
+</body>
+</html>

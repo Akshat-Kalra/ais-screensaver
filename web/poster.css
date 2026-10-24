@@ -1,0 +1,41 @@
+/* Poster: every track in one waterway over 12 hours, for a still wallpaper or lock screen. */
+
+body.poster { padding: 2.2rem; }
+
+.poster-frame {
+  position: relative;
+  height: 100%;
+  border: 0.14rem solid var(--ink);
+  outline: var(--hair) solid var(--ink);
+  outline-offset: 0.35rem;
+}
+
+.cartouche {
+  position: absolute;
+  left: 2rem;
+  bottom: 2rem;
+  padding: 0.45rem;
+  border: 0.14rem solid var(--ink);
+  background: var(--paper);
+}
+.cartouche[hidden] { display: none; }
+.cartouche-inner { border: var(--hair) solid var(--ink); padding: 1.2rem 1.5rem 1.1rem; min-width: 22rem; }
+.cartouche h1 {
+  font-family: var(--serif);
+  font-weight: 600;
+  font-size: 2.4rem;
+  line-height: 1;
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+.cartouche .sub {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 1.05rem;
+  margin: 0.45rem 0 0.9rem;
+  padding-bottom: 0.9rem;
+  border-bottom: var(--hair) solid var(--ink);
+}
+.cartouche dl { display: grid; grid-template-columns: auto 1fr; gap: 0.35rem 1.4rem; margin: 0; font-size: 0.68rem; }
+.cartouche dt { letter-spacing: 0.2em; text-transform: uppercase; color: var(--grey); }
+.cartouche dd { margin: 0; letter-spacing: 0.06em; }

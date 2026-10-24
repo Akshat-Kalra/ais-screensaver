@@ -252,12 +252,29 @@ class Store:
             "SELECT lon, lat, ts, sog FROM positions WHERE mmsi = ? AND ts > ? ORDER BY ts",
             (mmsi, int(since)),
         )
-        out: list[tuple[float, float, int, float | None]] = []
-        for lon, lat, ts, sog in cur:
-            if out:
-                plon, plat, pts, _ = out[-1]
-                dt_h = max(ts - pts, 1) / 3600
-                if haversine_nm(plat, plon, lat, lon) / dt_h > MAX_PLAUSIBLE_KN:
-                    continue
-            out.append((lon, lat, ts, sog))
-        return out
+        return _drop_glitches(cur)
+
+    def tracks_in(self, region: str, since: float) -> dict[int, list[tuple[float, float, int, float | None]]]:
+        """Every vessel's track in a region: mmsi -> [(lon, lat, ts, sog)], glitches removed."""
+        cur = self._reader().execute(
+            "SELECT p.mmsi, p.lon, p.lat, p.ts, p.sog FROM positions p JOIN vessels v ON v.mmsi = p.mmsi"
+            " WHERE v.region = ? AND p.ts > ? ORDER BY p.mmsi, p.ts",
+            (region, int(since)),
+        )
+        rows: dict[int, list] = {}
+        for mmsi, *point in cur:
+            rows.setdefault(mmsi, []).append(point)
+        return {mmsi: _drop_glitches(points) for mmsi, points in rows.items()}
+
+
+def _drop_glitches(points) -> list[tuple[float, float, int, float | None]]:
+    """Skip points that would need an impossible speed to reach from the previous one."""
+    out: list[tuple[float, float, int, float | None]] = []
+    for lon, lat, ts, sog in points:
+        if out:
+            plon, plat, pts, _ = out[-1]
+            dt_h = max(ts - pts, 1) / 3600
+            if haversine_nm(plat, plon, lat, lon) / dt_h > MAX_PLAUSIBLE_KN:
+                continue
+        out.append((lon, lat, ts, sog))
+    return out
